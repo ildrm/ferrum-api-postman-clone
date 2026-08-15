@@ -1,0 +1,22 @@
+[package]
+name = "ferrum-ui"
+description = "Native desktop interface for Ferrum API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+eframe.workspace = true
+egui_extras.workspace = true
+ferrum-app-services = { path = "../app-services" }
+ferrum-domain = { path = "../domain" }
+image.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

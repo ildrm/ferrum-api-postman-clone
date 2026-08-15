@@ -1,0 +1,22 @@
+[package]
+name = "ferrum-http-client"
+description = "Cancellable streaming HTTP engine for Ferrum API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ferrum-domain = { path = "../domain" }
+futures-util.workspace = true
+reqwest.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+url.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "ferrum-variables"
+description = "Scoped and dynamic variable interpolation for Ferrum API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+ferrum-domain = { path = "../domain" }
+thiserror.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

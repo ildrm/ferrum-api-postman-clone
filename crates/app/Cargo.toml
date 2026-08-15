@@ -1,0 +1,27 @@
+[package]
+name = "ferrum-app"
+description = "Ferrum API native desktop executable"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ferrum-api"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+eframe.workspace = true
+ferrum-app-services = { path = "../app-services" }
+ferrum-http-client = { path = "../http-client" }
+ferrum-secrets = { path = "../secrets" }
+ferrum-storage = { path = "../storage" }
+ferrum-ui = { path = "../ui" }
+tokio.workspace = true
+tracing.workspace = true
+tracing-appender.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

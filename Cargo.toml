@@ -1,0 +1,60 @@
+[workspace]
+members = [
+    "crates/app",
+    "crates/app-services",
+    "crates/domain",
+    "crates/http-client",
+    "crates/secrets",
+    "crates/storage",
+    "crates/ui",
+    "crates/variables",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+authors = ["Ferrum API contributors"]
+repository = "https://example.invalid/ferrum-api"
+
+[workspace.dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+eframe = { version = "0.31", default-features = false, features = ["__screenshot", "accesskit", "default_fonts", "glow", "wayland", "x11"] }
+egui_extras = { version = "0.31", features = ["syntect"] }
+futures-util = "0.3"
+http = "1.3"
+image = { version = "0.25", default-features = false, features = ["png"] }
+keyring = { version = "3.6", features = ["apple-native", "windows-native", "sync-secret-service"] }
+reqwest = { version = "0.12", default-features = false, features = ["brotli", "charset", "gzip", "http2", "json", "multipart", "rustls-tls", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sqlx = { version = "0.8", default-features = false, features = ["chrono", "macros", "migrate", "runtime-tokio", "sqlite", "uuid"] }
+thiserror = "2.0"
+tokio = { version = "1.44", features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+url = "2.5"
+uuid = { version = "1.16", features = ["serde", "v4"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+too_many_lines = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
