@@ -27,7 +27,7 @@ jobs:
           components: rustfmt, clippy
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev libwayland-dev libxkbcommon-dev
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config libx11-dev libxi-dev libgl1-mesa-dev libwayland-dev libxkbcommon-dev
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --target ${{ matrix.target }} -- -D warnings
       - run: cargo test --workspace --target ${{ matrix.target }}

@@ -9,7 +9,8 @@ license.workspace = true
 [dependencies]
 chrono.workspace = true
 ferrum-domain = { path = "../domain" }
-sqlx.workspace = true
+sqlx-core.workspace = true
+sqlx-sqlite.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 url.workspace = true

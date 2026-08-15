@@ -7,14 +7,22 @@ use ferrum_domain::{
     Collection, CollectionId, Environment, EnvironmentId, HistoryEntry, KeyValue, RequestBody,
     RequestId, SavedRequest, Variable, Workspace, WorkspaceId,
 };
-use sqlx::{
-    Row, Sqlite, SqlitePool, Transaction,
-    migrate::MigrateError,
-    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
-};
+use sqlx::{Row, Transaction};
+use sqlx_sqlite::{Sqlite, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
+
+mod sqlx {
+    pub use sqlx_core::{
+        error::Error, query::query, query_scalar::query_scalar, raw_sql::raw_sql, row::Row,
+        transaction::Transaction,
+    };
+
+    pub mod sqlite {
+        pub use sqlx_sqlite::SqliteRow;
+    }
+}
 
 /// `SQLite` database and aggregate repository.
 #[derive(Clone, Debug)]
@@ -29,7 +37,7 @@ impl SqliteStore {
             .filename(path)
             .create_if_missing(true)
             .foreign_keys(true)
-            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            .journal_mode(SqliteJournalMode::Wal)
             .busy_timeout(std::time::Duration::from_secs(5));
         Self::connect(options, 5).await
     }
@@ -38,7 +46,7 @@ impl SqliteStore {
     pub async fn in_memory() -> Result<Self, StorageError> {
         let options = SqliteConnectOptions::from_str("sqlite::memory:")?
             .foreign_keys(true)
-            .journal_mode(sqlx::sqlite::SqliteJournalMode::Memory);
+            .journal_mode(SqliteJournalMode::Memory);
         Self::connect(options, 1).await
     }
 
@@ -50,7 +58,7 @@ impl SqliteStore {
             .max_connections(max_connections)
             .connect_with(options)
             .await?;
-        sqlx::migrate!("./migrations").run(&pool).await?;
+        run_migrations(&pool).await?;
         Ok(Self { pool })
     }
 
@@ -374,6 +382,46 @@ impl SqliteStore {
     }
 }
 
+const INITIAL_SCHEMA: &str = include_str!("../migrations/0001_initial.sql");
+
+async fn run_migrations(pool: &SqlitePool) -> Result<(), sqlx::Error> {
+    let mut transaction = pool.begin().await?;
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS _ferrum_migrations (version INTEGER PRIMARY KEY NOT NULL, applied_at TEXT NOT NULL)",
+    )
+    .execute(&mut *transaction)
+    .await?;
+
+    let is_applied = sqlx::query_scalar::<_, i64>(
+        "SELECT EXISTS(SELECT 1 FROM _ferrum_migrations WHERE version = 1)",
+    )
+    .fetch_one(&mut *transaction)
+    .await?
+        != 0;
+
+    if !is_applied {
+        // Databases created by releases that used `sqlx::migrate!` already have this schema.
+        // Recognize them without replaying the initial CREATE statements.
+        let schema_exists = sqlx::query_scalar::<_, i64>(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'workspaces')",
+        )
+        .fetch_one(&mut *transaction)
+        .await?
+            != 0;
+        if !schema_exists {
+            sqlx::raw_sql(INITIAL_SCHEMA)
+                .execute(&mut *transaction)
+                .await?;
+        }
+        sqlx::query("INSERT INTO _ferrum_migrations (version, applied_at) VALUES (1, ?)")
+            .bind(Utc::now().to_rfc3339())
+            .execute(&mut *transaction)
+            .await?;
+    }
+
+    transaction.commit().await
+}
+
 async fn replace_rows(
     transaction: &mut Transaction<'_, Sqlite>,
     table: &'static str,
@@ -562,15 +610,12 @@ pub fn redact_url(value: &str) -> String {
     url.to_string()
 }
 
-/// Persistence and migration failures.
+/// Persistence failures.
 #[derive(Debug, Error)]
 pub enum StorageError {
     /// SQL operation failed.
     #[error("the local database operation failed")]
     Sql(#[from] sqlx::Error),
-    /// Database migration failed.
-    #[error("the local database migration failed")]
-    Migration(#[from] MigrateError),
     /// Stored identifier is corrupt.
     #[error("the local database contains an invalid identifier")]
     InvalidUuid(#[source] uuid::Error),
@@ -657,5 +702,29 @@ mod tests {
             store.list_environments(workspace.id).await.unwrap(),
             [environment]
         );
+    }
+
+    #[tokio::test]
+    async fn recognizes_databases_created_by_the_previous_migrator() {
+        let options = SqliteConnectOptions::from_str("sqlite::memory:")
+            .unwrap()
+            .foreign_keys(true);
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await
+            .unwrap();
+        sqlx::raw_sql(INITIAL_SCHEMA).execute(&pool).await.unwrap();
+
+        run_migrations(&pool).await.unwrap();
+        run_migrations(&pool).await.unwrap();
+
+        let applied = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM _ferrum_migrations WHERE version = 1",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(applied, 1);
     }
 }
